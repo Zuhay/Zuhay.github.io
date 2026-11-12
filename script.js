@@ -14,7 +14,7 @@
       tools: ['Java', 'OOP', 'REST APIs', 'Git', 'SQL', 'Agile']
     },
     {
-      id: 'fdm', title: 'Cloud / Site Reliability Engineer', co: 'FDM Group',
+      id: 'fdm', title: 'Cloud and Site Reliability Engineer', co: 'FDM Group',
       months: 18, color: '#0284c7',
       tools: ['AWS', 'Azure', 'Linux', 'Java', 'Jenkins', 'Git', 'GitHub', 'Python', 'Bash', 'Docker',
               'Kubernetes', 'Splunk', 'CloudWatch', 'Grafana', 'PostgreSQL', 'MySQL', 'Terraform', 'Ansible']
@@ -420,97 +420,148 @@
   }
 
   /* =========================================================
-     USAGE — tools grouped by category, one dot per company
+     SKILLS — rotating 3D tag sphere with a detail panel
      ========================================================= */
-  function initMatrix() {
-    const el = document.getElementById('matrix');
-    const legend = document.getElementById('usageLegend');
-    const GROUPS = [
-      { name: 'CI/CD & source control', tools: ['Git', 'GitHub', 'GitHub Actions', 'Jenkins', 'Harness'] },
-      { name: 'Containers & infrastructure', tools: ['Docker', 'Kubernetes', 'Rancher', 'Terraform', 'Ansible', 'Linux'] },
-      { name: 'Observability', tools: ['Splunk', 'CloudWatch', 'Grafana', 'LogicMonitor'] },
-      { name: 'Cloud', tools: ['AWS', 'Azure'] },
-      { name: 'Languages & tooling', tools: ['Java', 'Python', 'Bash', 'SQL', 'Copilot'] },
-      { name: 'Data & APIs', tools: ['PostgreSQL', 'MySQL', 'REST APIs'] }
-    ];
-    const cos = [...ROLES].reverse(); // most recent first
-    const short = co => co.replace('Options Clearing Corporation', 'OCC').replace('First Central Group', 'First Central');
+  // Every description comes from the résumé. `at` lists role ids from ROLES;
+  // `edu` names the degree or certificate. Neither means "from the wider skill set".
+  const SKILL_INFO = {
+    'Kubernetes': { cat: 'Containers & infrastructure', at: ['occ', 'fdm'], text: 'Troubleshot deployment failures, application health issues, resource constraints and container start-up failures in Kubernetes environments.' },
+    'Docker': { cat: 'Containers & infrastructure', at: ['occ', 'fdm'], text: 'Supported containerized applications and investigated container start-up failures and deployment inconsistencies.' },
+    'Rancher': { cat: 'Containers & infrastructure', at: ['occ'], text: 'Supported containerized applications and Kubernetes environments through Rancher.' },
+    'Terraform': { cat: 'Containers & infrastructure', at: ['occ', 'fdm'], text: 'Automated infrastructure provisioning, making environments repeatable and reducing manual work.' },
+    'Ansible': { cat: 'Containers & infrastructure', at: ['occ', 'fdm'], text: 'Automated configuration management to keep environments consistent and cut manual operational tasks.' },
+    'Linux': { cat: 'Containers & infrastructure', at: ['occ', 'fdm'], text: 'Supported enterprise applications on Linux and troubleshot Linux-related problems in production.' },
+    'Jenkins': { cat: 'CI/CD & source control', at: ['occ', 'fdm'], text: 'Maintained CI/CD workflows and supported application deployments and releases.' },
+    'GitHub Actions': { cat: 'CI/CD & source control', at: ['occ'], text: 'Maintained and enhanced CI/CD workflows for consistent builds, deployments and releases.' },
+    'Harness': { cat: 'CI/CD & source control', at: ['occ'], text: 'Maintained deployment and release workflows across development and production environments.' },
+    'CI/CD': { cat: 'CI/CD & source control', at: ['occ', 'fdm'], text: 'Kept builds, deployments and releases consistent across Jenkins, GitHub Actions and Harness.' },
+    'Git': { cat: 'CI/CD & source control', at: ['occ', 'fdm', 'fcg'], text: 'Version control for application code and automation in all three roles.' },
+    'AWS': { cat: 'Cloud', at: ['fdm'], edu: 'AWS Certified Cloud Practitioner', text: 'Supported enterprise application environments: availability, configuration, connectivity and performance.' },
+    'Azure': { cat: 'Cloud', at: ['fdm'], text: 'Supported enterprise application environments: availability, configuration, connectivity and performance.' },
+    'Splunk': { cat: 'Observability', at: ['occ', 'fdm'], text: 'Analysed logs to investigate application and infrastructure issues and find their root causes.' },
+    'CloudWatch': { cat: 'Observability', at: ['occ', 'fdm'], text: 'Analysed logs and metrics to investigate application and infrastructure issues.' },
+    'Grafana': { cat: 'Observability', at: ['occ', 'fdm'], text: 'Monitored application and infrastructure metrics to spot problems and support incident resolution.' },
+    'LogicMonitor': { cat: 'Observability', at: ['occ'], text: 'Investigated application and infrastructure issues and performed root cause analysis.' },
+    'RCA': { cat: 'Observability', at: ['occ', 'fdm'], text: 'Root cause analysis of application and infrastructure issues, followed by corrective actions to improve reliability.' },
+    'SRE': { cat: 'Practices', at: ['fdm'], text: 'Site reliability work: application availability, incident investigation and production reliability.' },
+    'Python': { cat: 'Languages & scripting', at: ['occ', 'fdm'], text: 'Automation for health checks, log analysis, certificate validation, backup verification and patch validation.' },
+    'Bash': { cat: 'Languages & scripting', at: ['occ', 'fdm'], text: 'Automation for health checks, log rotation, disk-space clean-up and connectivity checks.' },
+    'Java': { cat: 'Languages & scripting', at: ['occ', 'fdm', 'fcg'], text: 'Built backend enterprise applications at First Central, then investigated Java runtime errors and exceptions in production at FDM and OCC.' },
+    'SQL': { cat: 'Languages & scripting', at: ['fcg'], text: 'Relational database concepts and data processing in backend applications.' },
+    'C#': { cat: 'Languages & scripting', text: 'One of the programming languages in my skill set.' },
+    'C++': { cat: 'Languages & scripting', text: 'One of the programming languages in my skill set.' },
+    'JavaScript': { cat: 'Languages & scripting', text: 'One of the programming languages in my skill set, used for frontend work alongside Angular.' },
+    'PostgreSQL': { cat: 'Databases', at: ['fdm'], text: 'Troubleshot connectivity and performance issues with application and infrastructure teams.' },
+    'MySQL': { cat: 'Databases', at: ['fdm'], text: 'Troubleshot connectivity and performance issues with application and infrastructure teams.' },
+    'REST APIs': { cat: 'Backend', at: ['fcg'], text: 'Supported REST application integrations.' },
+    'Microservices': { cat: 'Backend', text: 'Part of my backend skill set, alongside service-oriented architecture.' },
+    'Angular': { cat: 'Frontend', text: 'Part of my frontend skill set, alongside AJAX and responsive web development.' },
+    'HTML5': { cat: 'Frontend', text: 'Part of my frontend skill set, alongside CSS3 and responsive web development.' },
+    'CSS3': { cat: 'Frontend', text: 'Part of my frontend skill set, alongside HTML5 and responsive web development.' },
+    'TensorFlow': { cat: 'AI & ML', edu: 'BSc (Hons) Computer Science, University of Salford', text: 'Deep learning with RNNs and CNNs. My degree included a Deep Learning with Python specialization.' },
+    'Copilot': { cat: 'AI-assisted development', at: ['occ'], text: 'Sped up scripting, code exploration, log analysis and troubleshooting, and reviewed and validated everything it generated.' },
+    'Agile': { cat: 'Practices', at: ['fcg'], edu: 'BSc (Hons) Computer Science, University of Salford', text: 'Worked in an Agile development team at First Central. Agile/Scrum was also a specialization in my degree.' },
+    'Code reviews': { cat: 'Practices', at: ['fcg'], text: 'Took part in code reviews, testing and releases throughout the software development lifecycle.' },
+    'Testing': { cat: 'Practices', at: ['fcg'], text: 'Unit and integration testing concepts; validated fixes with QA engineers.' },
+    'Documentation': { cat: 'Practices', at: ['occ', 'fdm'], text: 'Documented technical solutions and repeatable approaches to deployment and troubleshooting.' },
+    'Mentoring': { cat: 'Practices', text: 'Technical mentoring is part of my engineering practice.' }
+  };
 
-    legend.innerHTML = cos.map(r =>
-      `<button type="button" data-co="${r.id}" style="--c:${r.color}"><i></i>${short(r.co)}</button>`).join('');
-
-    el.innerHTML = GROUPS.map(g => `
-      <div class="usage__group">
-        <h4>${g.name}</h4>
-        <ul>${g.tools.map(t => {
-          const used = cos.filter(r => r.tools.includes(t));
-          const label = `${t}: used at ${used.map(r => short(r.co)).join(', ')}`;
-          return `<li aria-label="${label}"><span class="usage__tool">${t}</span><span class="usage__dots" aria-hidden="true">${
-            cos.map(r => `<i class="${r.tools.includes(t) ? 'on' : ''}" data-co="${r.id}" style="--c:${r.color}" title="${t} ${r.tools.includes(t) ? 'used' : 'not used'} at ${short(r.co)}"></i>`).join('')
-          }</span></li>`;
-        }).join('')}</ul>
-      </div>`).join('');
-
-    // Hover or focus a company in the legend to highlight only its dots
-    legend.querySelectorAll('button').forEach(btn => {
-      const on = () => { el.dataset.focus = btn.dataset.co; legend.dataset.focus = btn.dataset.co; };
-      const off = () => { delete el.dataset.focus; delete legend.dataset.focus; };
-      btn.addEventListener('mouseenter', on); btn.addEventListener('focus', on);
-      btn.addEventListener('mouseleave', off); btn.addEventListener('blur', off);
-    });
-  }
-
-  /* =========================================================
-     SKILLS — rotating 3D tag sphere
-     ========================================================= */
   function initSphere() {
     const el = document.getElementById('sphere');
-    const words = ['Kubernetes', 'Terraform', 'Docker', 'Jenkins', 'GitHub Actions', 'Harness', 'Ansible', 'AWS', 'Azure',
-      'Splunk', 'Grafana', 'CloudWatch', 'LogicMonitor', 'Rancher', 'Linux', 'Python', 'Bash', 'Java', 'C#', 'C++',
-      'JavaScript', 'SQL', 'PostgreSQL', 'MySQL', 'REST APIs', 'Microservices', 'Angular', 'TensorFlow', 'CI/CD',
-      'Git', 'RCA', 'Agile', 'Copilot', 'HTML5', 'CSS3', 'SRE'];
+    const panel = document.getElementById('skillPanel');
+    const $p = id => document.getElementById(id);
+    const roleById = Object.fromEntries(ROLES.map(r => [r.id, r]));
+    const short = co => co.replace('Options Clearing Corporation', 'OCC').replace('First Central Group', 'First Central');
+    const words = Object.keys(SKILL_INFO);
     const hot = new Set(['Kubernetes', 'Terraform', 'Jenkins', 'AWS', 'Splunk', 'Python', 'Java', 'Docker', 'CI/CD']);
+
     const pts = words.map((w, i) => {
-      const s = document.createElement('span');
+      const s = document.createElement('button');
+      s.type = 'button';
+      s.className = 'tag' + (hot.has(w) ? ' hot' : '');
       s.textContent = w;
-      if (hot.has(w)) s.classList.add('hot');
       el.appendChild(s);
       const phi = Math.acos(1 - 2 * (i + 0.5) / words.length);
       const theta = Math.PI * (1 + Math.sqrt(5)) * i;
       return { s, x: Math.sin(phi) * Math.cos(theta), y: Math.sin(phi) * Math.sin(theta), z: Math.cos(phi) };
     });
 
-    let vx = 0.003, vy = 0.004, dragging = false, lx = 0, ly = 0, raf = null;
-    el.addEventListener('pointerdown', e => { dragging = true; lx = e.clientX; ly = e.clientY; el.setPointerCapture(e.pointerId); });
-    el.addEventListener('pointerup', () => (dragging = false));
-    el.addEventListener('pointercancel', () => (dragging = false));
+    let current = null;
+    function show(tag) {
+      const w = tag.textContent;
+      const info = SKILL_INFO[w];
+      if (!info || tag === current) return;
+      if (current) current.classList.remove('is-active');
+      current = tag;
+      tag.classList.add('is-active');
+      panel.classList.add('has-skill');
+      $p('spKicker').textContent = info.cat;
+      $p('spName').textContent = w;
+      $p('spText').textContent = info.text;
+      const rows = (info.at || []).map(id => {
+        const r = roleById[id];
+        return `<li><i style="background:${r.color}"></i><span><b>${short(r.co)}</b>${r.title}</span></li>`;
+      });
+      if (info.edu) rows.push(`<li><i class="edu"></i><span><b>Education</b>${info.edu}</span></li>`);
+      $p('spWhere').innerHTML = rows.length ? rows.join('')
+        : '<li class="none">From my wider skill set rather than one of the roles above.</li>';
+      $p('spWhereLabel').hidden = false;
+    }
+
+    // Drag to spin; a press that doesn't move counts as a tap on the tag
+    let vx = 0.003, vy = 0.004, pressed = false, dragging = false;
+    let sx0 = 0, sy0 = 0, lx = 0, ly = 0, paused = false, raf = null;
+    el.addEventListener('pointerdown', e => { pressed = true; dragging = false; sx0 = lx = e.clientX; sy0 = ly = e.clientY; });
     el.addEventListener('pointermove', e => {
+      if (!pressed) return;
+      if (!dragging && Math.abs(e.clientX - sx0) + Math.abs(e.clientY - sy0) > 5) {
+        dragging = true; paused = false;
+        el.setPointerCapture(e.pointerId);
+        el.classList.add('is-dragging');
+      }
       if (!dragging) return;
       vy = (e.clientX - lx) * 0.0025; vx = -(e.clientY - ly) * 0.0025;
       lx = e.clientX; ly = e.clientY;
     });
+    const release = () => { pressed = false; dragging = false; el.classList.remove('is-dragging'); };
+    el.addEventListener('pointerup', release);
+    el.addEventListener('pointercancel', release);
+    el.addEventListener('click', e => { const t = e.target.closest('.tag'); if (t) show(t); });
+
+    // Hover or keyboard focus shows details and holds the sphere still
+    el.addEventListener('pointerover', e => {
+      const t = e.target.closest('.tag');
+      if (t && !dragging) { paused = true; show(t); }
+    });
+    el.addEventListener('pointerout', e => { if (e.target.closest('.tag')) paused = false; });
+    el.addEventListener('focusin', e => { const t = e.target.closest('.tag'); if (t) { paused = true; show(t); } });
+    el.addEventListener('focusout', () => { paused = false; });
 
     function frame() {
       const R = el.clientWidth * 0.4;
-      const cx = Math.cos(vx), sx = Math.sin(vx), cy = Math.cos(vy), sy = Math.sin(vy);
+      const rx = paused ? 0 : vx, ry = paused ? 0 : vy;
+      const cx = Math.cos(rx), sx = Math.sin(rx), cy = Math.cos(ry), sy = Math.sin(ry);
       pts.forEach(p => {
         // rotate around X then Y
         let y = p.y * cx - p.z * sx, z = p.y * sx + p.z * cx;
         let x = p.x * cy + z * sy; z = -p.x * sy + z * cy;
         p.x = x; p.y = y; p.z = z;
-        const scale = (z + 2) / 3;
+        const active = p.s === current;
+        const scale = active ? 1.15 : (z + 2) / 3;
         p.s.style.transform = `translate(-50%,-50%) translate3d(${(x * R).toFixed(1)}px,${(y * R).toFixed(1)}px,0) scale(${scale.toFixed(3)})`;
-        p.s.style.opacity = (0.25 + (z + 1) * 0.375).toFixed(3);
-        p.s.style.zIndex = Math.round((z + 1) * 50);
+        p.s.style.opacity = active ? '1' : (0.25 + (z + 1) * 0.375).toFixed(3);
+        p.s.style.zIndex = active ? 200 : Math.round((z + 1) * 50);
       });
       if (!dragging) { vx += (0.002 - vx) * 0.02; vy += (0.004 - vy) * 0.02; }
       raf = reduceMotion ? null : requestAnimationFrame(frame);
     }
+    // In reduced-motion mode the sphere draws once; redraw when the selection changes
+    if (reduceMotion) el.addEventListener('pointerover', () => frame());
     whenVisible(el, () => { if (!raf) frame(); }, () => { cancelAnimationFrame(raf); raf = null; });
   }
 
   /* ---------- Boot ---------- */
-  initMatrix();
   initSphere();
   function webglOK() {
     try { const c = document.createElement('canvas'); return !!(c.getContext('webgl') || c.getContext('experimental-webgl')); }

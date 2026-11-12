@@ -192,15 +192,6 @@
           <div class="viz__legend" id="chartLegend"></div>
         </aside>
       </div>
-
-      <!-- Tech x Company matrix -->
-      <div class="matrix-wrap">
-        <div class="usage__head">
-          <h3 class="sub">Where each technology was used</h3>
-          <div class="usage__legend" id="usageLegend" aria-label="Companies, most recent first"></div>
-        </div>
-        <div class="usage" id="matrix"></div>
-      </div>
     </section>
 
     <!-- ================= SKILLS ================= -->
@@ -210,14 +201,14 @@
         <h2>Also in my toolkit</h2>
       </header>
       <div class="skills">
-        <div class="sphere" id="sphere" aria-hidden="true"></div>
-        <div class="skills__list">
-          <div class="skill reveal"><h3>Languages</h3><p>C#, JavaScript, C++</p></div>
-          <div class="skill reveal"><h3>Backend</h3><p>Microservices, service-oriented architecture</p></div>
-          <div class="skill reveal"><h3>Frontend</h3><p>Angular, HTML5, CSS3, AJAX, responsive web development</p></div>
-          <div class="skill reveal"><h3>AI &amp; ML</h3><p>TensorFlow, deep learning (RNNs, CNNs)</p></div>
-          <div class="skill reveal"><h3>Practices</h3><p>Agile/Scrum, code reviews, unit and integration testing, technical documentation, technical mentoring</p></div>
-        </div>
+        <div class="sphere" id="sphere" role="group" aria-label="Skills. Select one to see where I used it."></div>
+        <aside class="skill-panel" id="skillPanel" aria-live="polite">
+          <p class="skill-panel__kicker" id="spKicker">Skills</p>
+          <h3 class="skill-panel__name" id="spName">Hover over a skill</h3>
+          <p class="skill-panel__text" id="spText">Each tag on the sphere shows what I used it for and where. Drag the sphere to spin it, or tap a tag on a phone.</p>
+          <p class="skill-panel__label" id="spWhereLabel" hidden>Where</p>
+          <ul class="skill-panel__where" id="spWhere"></ul>
+        </aside>
       </div>
     </section>
 
