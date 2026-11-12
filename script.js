@@ -10,19 +10,19 @@
   const ROLES = [
     {
       id: 'fcg', title: 'Software Engineer', co: 'First Central Group',
-      months: 4, color: '#a78bfa',
+      months: 4, color: '#7c3aed',
       tools: ['Java', 'OOP', 'REST APIs', 'Git', 'SQL', 'Agile']
     },
     {
       id: 'fdm', title: 'Cloud / Site Reliability Engineer', co: 'FDM Group',
-      months: 18, color: '#4cc9ff',
-      tools: ['AWS', 'Azure', 'Linux', 'Java', 'Jenkins', 'GitHub', 'Python', 'Bash', 'Docker',
+      months: 18, color: '#0284c7',
+      tools: ['AWS', 'Azure', 'Linux', 'Java', 'Jenkins', 'Git', 'GitHub', 'Python', 'Bash', 'Docker',
               'Kubernetes', 'Splunk', 'CloudWatch', 'Grafana', 'PostgreSQL', 'MySQL', 'Terraform', 'Ansible']
     },
     {
       id: 'occ', title: 'DevOps / Platform Engineer', co: 'Options Clearing Corporation',
-      months: 25, color: '#3ef0a8',
-      tools: ['Java', 'Linux', 'Python', 'Bash', 'Jenkins', 'GitHub Actions', 'Harness', 'Terraform',
+      months: 25, color: '#059669',
+      tools: ['Java', 'Linux', 'Python', 'Bash', 'Git', 'Jenkins', 'GitHub Actions', 'Harness', 'Terraform',
               'Ansible', 'Docker', 'Kubernetes', 'Rancher', 'Splunk', 'CloudWatch', 'Grafana',
               'LogicMonitor', 'Copilot']
     }
@@ -106,11 +106,11 @@
      ========================================================= */
   function initHero() {
     const canvas = document.getElementById('heroCanvas');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: reduceMotion });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0x07080c, 0.045);
+    scene.fog = new THREE.FogExp2(0xffffff, 0.04);
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
     camera.position.set(0, 0, 11);
 
@@ -118,35 +118,35 @@
     scene.add(world);
 
     // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.35));
-    const l1 = new THREE.PointLight(0x3ef0a8, 2.2, 30); l1.position.set(5, 4, 6); scene.add(l1);
-    const l2 = new THREE.PointLight(0x4cc9ff, 1.8, 30); l2.position.set(-6, -3, 4); scene.add(l2);
-    const l3 = new THREE.PointLight(0xa78bfa, 1.4, 30); l3.position.set(0, -5, -4); scene.add(l3);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const l1 = new THREE.PointLight(0x10b981, 1.6, 30); l1.position.set(5, 4, 6); scene.add(l1);
+    const l2 = new THREE.PointLight(0x38bdf8, 1.4, 30); l2.position.set(-6, -3, 4); scene.add(l2);
+    const l3 = new THREE.PointLight(0xa78bfa, 1.2, 30); l3.position.set(0, -5, -4); scene.add(l3);
 
     // Core: faceted solid + wireframe shell
     const core = new THREE.Mesh(
       new THREE.IcosahedronGeometry(1.5, 1),
-      new THREE.MeshStandardMaterial({ color: 0x10141c, metalness: 0.8, roughness: 0.25, flatShading: true })
+      new THREE.MeshStandardMaterial({ color: 0xe8edf3, metalness: 0.25, roughness: 0.35, flatShading: true })
     );
     world.add(core);
     const shell = new THREE.LineSegments(
       new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(2.05, 1)),
-      new THREE.LineBasicMaterial({ color: 0x3ef0a8, transparent: true, opacity: 0.55 })
+      new THREE.LineBasicMaterial({ color: 0x059669, transparent: true, opacity: 0.6 })
     );
     world.add(shell);
 
     // Orbit rings
     const ringMat = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, side: THREE.DoubleSide });
-    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(3.3, 0.012, 8, 160), ringMat(0x4cc9ff, 0.6));
+    const ring1 = new THREE.Mesh(new THREE.TorusGeometry(3.3, 0.012, 8, 160), ringMat(0x0284c7, 0.55));
     ring1.rotation.x = Math.PI / 2.4;
-    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(4.1, 0.01, 8, 160), ringMat(0xa78bfa, 0.45));
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(4.1, 0.01, 8, 160), ringMat(0x7c3aed, 0.45));
     ring2.rotation.set(Math.PI / 3, Math.PI / 5, 0);
     world.add(ring1, ring2);
 
     // Node cluster (pods) + connections
     const nodeCount = 64, radius = 3.3, nodes = [];
     const nodeGeo = new THREE.SphereGeometry(0.06, 12, 12);
-    const palette = [0x3ef0a8, 0x4cc9ff, 0xa78bfa];
+    const palette = [0x059669, 0x0284c7, 0x7c3aed];
     for (let i = 0; i < nodeCount; i++) {
       const phi = Math.acos(1 - 2 * (i + 0.5) / nodeCount);
       const theta = Math.PI * (1 + Math.sqrt(5)) * i;
@@ -163,14 +163,14 @@
         if (nodes[i].distanceTo(nodes[j]) < 1.55) linePos.push(...nodes[i].toArray(), ...nodes[j].toArray());
     const lineGeo = new THREE.BufferGeometry();
     lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(linePos, 3));
-    world.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x8fa3c0, transparent: true, opacity: 0.18 })));
+    world.add(new THREE.LineSegments(lineGeo, new THREE.LineBasicMaterial({ color: 0x64748b, transparent: true, opacity: 0.28 })));
 
     // Packets travelling along random edges
     const packets = [];
     const edgeCount = linePos.length / 6;
     const pGeo = new THREE.SphereGeometry(0.045, 8, 8);
     for (let i = 0; i < 22; i++) {
-      const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
+      const m = new THREE.Mesh(pGeo, new THREE.MeshBasicMaterial({ color: 0x0f172a }));
       world.add(m);
       packets.push({ m, e: Math.floor(Math.random() * edgeCount), t: Math.random(), s: 0.004 + Math.random() * 0.01 });
     }
@@ -185,7 +185,7 @@
     }
     const starGeo = new THREE.BufferGeometry();
     starGeo.setAttribute('position', new THREE.BufferAttribute(sp, 3));
-    const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x9fb4d0, size: 0.04, transparent: true, opacity: 0.7 }));
+    const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x94a3b8, size: 0.045, transparent: true, opacity: 0.6 }));
     scene.add(stars);
 
     // Layout: push the cluster to the right on wide screens
@@ -195,8 +195,8 @@
       camera.aspect = w / h;
       camera.updateProjectionMatrix();
       const wide = w > 900;
-      world.position.set(wide ? 3.6 : 0, wide ? 0 : 1.2, 0);
-      world.scale.setScalar(wide ? 1 : 0.8);
+      world.position.set(wide ? 4.9 : 0, wide ? 0 : 1.2, 0);
+      world.scale.setScalar(wide ? 0.9 : 0.8);
       camera.position.z = wide ? 11 : 13;
     }
     resize();
@@ -247,13 +247,13 @@
     const stage = document.getElementById('chartStage');
     const canvas = document.getElementById('chartCanvas');
     const labelsEl = document.getElementById('chartLabels');
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: reduceMotion });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 100);
 
-    scene.add(new THREE.AmbientLight(0xffffff, 0.45));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
     const key = new THREE.DirectionalLight(0xffffff, 0.9); key.position.set(6, 10, 8); scene.add(key);
     const rim = new THREE.DirectionalLight(0x4cc9ff, 0.5); rim.position.set(-8, 4, -6); scene.add(rim);
 
@@ -261,7 +261,7 @@
     scene.add(pivot);
 
     // Floor grid
-    const grid = new THREE.GridHelper(20, 20, 0x2a3442, 0x161c25);
+    const grid = new THREE.GridHelper(20, 20, 0xcbd5e1, 0xe2e8f0);
     grid.position.y = 0;
     pivot.add(grid);
 
@@ -282,7 +282,7 @@
       const mesh = new THREE.Mesh(geo, mat);
       mesh.position.set(x + w / 2, 0, 0);
       mesh.scale.y = 0.001;
-      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.35 }));
+      const edges = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ color: 0x0f172a, transparent: true, opacity: 0.25 }));
       mesh.add(edges);
       pivot.add(mesh);
 
@@ -420,26 +420,44 @@
   }
 
   /* =========================================================
-     MATRIX — tech × company (CSS 3D tiles)
+     USAGE — tools grouped by category, one dot per company
      ========================================================= */
   function initMatrix() {
     const el = document.getElementById('matrix');
-    const order = ['Java', 'Python', 'Bash', 'SQL', 'Linux', 'Git', 'GitHub', 'Jenkins', 'GitHub Actions', 'Harness',
-      'Docker', 'Kubernetes', 'Rancher', 'Terraform', 'Ansible', 'AWS', 'Azure',
-      'Splunk', 'CloudWatch', 'Grafana', 'LogicMonitor', 'PostgreSQL', 'MySQL', 'REST APIs', 'Copilot'];
-    const rows = [...ROLES].reverse();
-    el.style.setProperty('--cols', order.length);
-    let html = '<div></div>' + order.map(t => `<div class="matrix__h" role="columnheader">${t}</div>`).join('');
-    let n = 0;
-    rows.forEach(r => {
-      html += `<div class="matrix__row" role="rowheader"><i style="background:${r.color}"></i>${r.co.replace('Options Clearing Corporation', 'OCC')}</div>`;
-      order.forEach(t => {
-        const on = r.tools.includes(t);
-        html += `<div class="cell${on ? ' on' : ''}" role="cell" style="--c:${r.color};--i:${n++}" title="${t}${on ? ' @ ' + r.co : ''}" aria-label="${t} ${on ? 'used' : 'not used'} at ${r.co}"><span></span></div>`;
-      });
+    const legend = document.getElementById('usageLegend');
+    const GROUPS = [
+      { name: 'CI/CD & source control', tools: ['Git', 'GitHub', 'GitHub Actions', 'Jenkins', 'Harness'] },
+      { name: 'Containers & infrastructure', tools: ['Docker', 'Kubernetes', 'Rancher', 'Terraform', 'Ansible', 'Linux'] },
+      { name: 'Observability', tools: ['Splunk', 'CloudWatch', 'Grafana', 'LogicMonitor'] },
+      { name: 'Cloud', tools: ['AWS', 'Azure'] },
+      { name: 'Languages & tooling', tools: ['Java', 'Python', 'Bash', 'SQL', 'Copilot'] },
+      { name: 'Data & APIs', tools: ['PostgreSQL', 'MySQL', 'REST APIs'] }
+    ];
+    const cos = [...ROLES].reverse(); // most recent first
+    const short = co => co.replace('Options Clearing Corporation', 'OCC').replace('First Central Group', 'First Central');
+
+    legend.innerHTML = cos.map(r =>
+      `<button type="button" data-co="${r.id}" style="--c:${r.color}"><i></i>${short(r.co)}</button>`).join('');
+
+    el.innerHTML = GROUPS.map(g => `
+      <div class="usage__group">
+        <h4>${g.name}</h4>
+        <ul>${g.tools.map(t => {
+          const used = cos.filter(r => r.tools.includes(t));
+          const label = `${t}: used at ${used.map(r => short(r.co)).join(', ')}`;
+          return `<li aria-label="${label}"><span class="usage__tool">${t}</span><span class="usage__dots" aria-hidden="true">${
+            cos.map(r => `<i class="${r.tools.includes(t) ? 'on' : ''}" data-co="${r.id}" style="--c:${r.color}" title="${t} ${r.tools.includes(t) ? 'used' : 'not used'} at ${short(r.co)}"></i>`).join('')
+          }</span></li>`;
+        }).join('')}</ul>
+      </div>`).join('');
+
+    // Hover or focus a company in the legend to highlight only its dots
+    legend.querySelectorAll('button').forEach(btn => {
+      const on = () => { el.dataset.focus = btn.dataset.co; legend.dataset.focus = btn.dataset.co; };
+      const off = () => { delete el.dataset.focus; delete legend.dataset.focus; };
+      btn.addEventListener('mouseenter', on); btn.addEventListener('focus', on);
+      btn.addEventListener('mouseleave', off); btn.addEventListener('blur', off);
     });
-    el.innerHTML = html;
-    new IntersectionObserver(([e], o) => { if (e.isIntersecting) { el.classList.add('in'); o.disconnect(); } }, { threshold: 0.3 }).observe(el);
   }
 
   /* =========================================================
