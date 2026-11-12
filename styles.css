@@ -152,7 +152,7 @@ h1, h2, h3 { line-height: 1.1; margin: 0; letter-spacing: -0.02em; }
 /* ================= Stats ================= */
 .stats {
   position: relative; z-index: 2;
-  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
   margin-top: -40px;
 }
 .stat {
