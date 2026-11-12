@@ -79,8 +79,9 @@
         <h2>How I ship</h2>
       </header>
       <p class="section__lede">
-        The delivery pipeline I supported, with tools mapped to each stage. When a change
-        misbehaves in production, I trace it through the pipeline to find the root cause.
+        The delivery loop I supported. Each change is built, provisioned and promoted through
+        development, testing and production, and what we observe in production feeds the next
+        iteration. When a change fails testing, it goes back to build.
       </p>
       <figure class="pipeline">
         <div class="pipeline__stage" id="pipelineStage">
@@ -88,8 +89,9 @@
           <div class="pipeline__labels" id="pipelineLabels" aria-hidden="true"></div>
         </div>
         <figcaption class="sr-only">
-          Commit: Git, GitHub. Build: Jenkins, GitHub Actions. Provision: Terraform, Ansible.
-          Deploy: Harness, Kubernetes. Observe: Splunk, Grafana.
+          A loop of seven stages: Commit (Git, GitHub), Build (Jenkins, GitHub Actions), Provision
+          (Terraform, Ansible), then the Development, Testing and Production environments (Harness,
+          Kubernetes, Rancher), then Observe (Splunk, Grafana, CloudWatch), with feedback returning to Commit.
         </figcaption>
       </figure>
     </section>

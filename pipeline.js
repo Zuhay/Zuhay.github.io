@@ -1,261 +1,355 @@
-/* Deployment pipeline: 3D scene (Three.js r128, loaded before this file) */
+/* Delivery loop: 3D scene (Three.js r128, loaded before this file)
+   Seven stations on a ring. Changes travel Commit → Observe, then feedback
+   closes the loop back to Commit. Every fifth change fails Testing and goes
+   back to Build. */
 (function () {
   'use strict';
   if (typeof THREE === 'undefined') return;
   try { const c = document.createElement('canvas'); if (!(c.getContext('webgl') || c.getContext('experimental-webgl'))) return; } catch (e) { return; }
 
+  const stageEl = document.getElementById('pipelineStage');
+  if (!stageEl) return;
+  const canvas = document.getElementById('pipelineCanvas');
+  const labelsEl = document.getElementById('pipelineLabels');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
   const COLOR = {
-    navy: 0x12233f, navyDeep: 0x0c1830, white: 0xe8eef5, steel: 0x8a9bb4,
-    amber: 0xffb000, red: 0xff5a4e, block: 0x1d3560
+    block: 0xf8fafc, edge: 0x94a3b8, lampOff: 0xcbd5e1, amber: 0xf59e0b,
+    packet: 0x0f172a, red: 0xef4444, track: 0xcbd5e1, hub: 0xffffff, accent: 0x059669
   };
-  const STAGES = [
+  const STATIONS = [
     { name: 'Commit', tools: 'Git, GitHub' },
     { name: 'Build', tools: 'Jenkins, GitHub Actions' },
     { name: 'Provision', tools: 'Terraform, Ansible' },
-    { name: 'Deploy', tools: 'Harness, Kubernetes' },
-    { name: 'Observe', tools: 'Splunk, Grafana' }
+    { name: 'Development', tools: 'Harness, Kubernetes', env: 0x0284c7 },
+    { name: 'Testing', tools: 'Harness, Kubernetes', env: 0x7c3aed },
+    { name: 'Production', tools: 'Harness, Kubernetes, Rancher', env: 0x059669 },
+    { name: 'Observe', tools: 'Splunk, Grafana, CloudWatch' }
   ];
+  const BUILD = 1, TESTING = 4;
+
   const easeOut = t => 1 - Math.pow(1 - t, 3);
   const clamp01 = t => Math.max(0, Math.min(1, t));
-  function whenVisible(el, start, stop) {
-    new IntersectionObserver(([e]) => (e.isIntersecting ? start() : stop())).observe(el);
+
+  /* ---------- Renderer, scene, lights ---------- */
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: reduceMotion });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0xdbe3ec, 0.85));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.55);
+  sun.position.set(-5, 12, 7);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -10, near: 1, far: 40 });
+  sun.shadow.radius = 4;
+  scene.add(sun);
+
+  const grid = new THREE.GridHelper(40, 40, 0xdbe3ec, 0xe9eef3);
+  scene.add(grid);
+  const shadowFloor = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), new THREE.ShadowMaterial({ opacity: 0.12 }));
+  shadowFloor.rotation.x = -Math.PI / 2;
+  shadowFloor.position.y = 0.001;
+  shadowFloor.receiveShadow = true;
+  scene.add(shadowFloor);
+
+  /* ---------- Ring geometry ---------- */
+  const R = 5.2;
+  const STEP = (Math.PI * 2) / STATIONS.length;
+  const START = Math.PI * 0.85;                   // Commit sits front-left
+  const angleOf = i => START + i * STEP;          // unwrapped, increasing
+  const onRing = (a, r = R, y = 0) => new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r);
+
+  const H = 0.5, W = 1.9, D = 1.4;
+  const TRACK_Y = H + 0.04, PACKET_Y = H + 0.26;
+
+  // Main track: Commit → Observe
+  const trackMat = new THREE.MeshStandardMaterial({ color: COLOR.track, roughness: 0.7, transparent: true, opacity: 0 });
+  const track = new THREE.Mesh(
+    new THREE.TorusGeometry(R, 0.07, 10, 200, STEP * (STATIONS.length - 1)),
+    trackMat
+  );
+  track.rotation.x = Math.PI / 2;           // lie flat; torus arc starts at +x and sweeps toward +z… in local space
+  track.rotation.z = START;                 // align arc start with Commit
+  track.position.y = TRACK_Y;
+  track.receiveShadow = true;
+  scene.add(track);
+
+  // Feedback segment: Observe → Commit (dashed amber)
+  const fbPts = [];
+  for (let k = 0; k <= 40; k++) fbPts.push(onRing(angleOf(STATIONS.length - 1) + STEP * (k / 40), R, TRACK_Y + 0.02));
+  const feedback = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints(fbPts),
+    new THREE.LineDashedMaterial({ color: COLOR.amber, dashSize: 0.22, gapSize: 0.16, transparent: true, opacity: 0 })
+  );
+  feedback.computeLineDistances();
+  scene.add(feedback);
+
+  // Hub in the middle
+  const hub = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.3, 2.4, 0.16, 72),
+    new THREE.MeshStandardMaterial({ color: COLOR.hub, roughness: 0.5 })
+  );
+  hub.position.y = 0.08;
+  hub.castShadow = true; hub.receiveShadow = true;
+  scene.add(hub);
+  const hubRing = new THREE.Mesh(
+    new THREE.TorusGeometry(2.32, 0.035, 8, 140),
+    new THREE.MeshBasicMaterial({ color: COLOR.accent })
+  );
+  hubRing.rotation.x = Math.PI / 2;
+  hubRing.position.y = 0.17;
+  scene.add(hubRing);
+
+  /* ---------- Stations ---------- */
+  const blockGeo = new THREE.BoxGeometry(W, H, D);
+  blockGeo.translate(0, H / 2, 0);
+  const edgeGeo = new THREE.EdgesGeometry(blockGeo);
+  const lampGeo = new THREE.BoxGeometry(W * 0.75, 0.05, 0.14);
+  const capGeo = new THREE.BoxGeometry(W, 0.08, D);
+
+  const stations = STATIONS.map((s, i) => {
+    const a = angleOf(i);
+    const g = new THREE.Group();
+    g.position.copy(onRing(a));
+    g.rotation.y = -a + Math.PI / 2;        // long side follows the ring
+
+    const mat = new THREE.MeshStandardMaterial({ color: COLOR.block, roughness: 0.55, emissive: COLOR.amber, emissiveIntensity: 0 });
+    const block = new THREE.Mesh(blockGeo, mat);
+    block.castShadow = true; block.receiveShadow = true;
+    g.add(block);
+    g.add(new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: COLOR.edge, transparent: true, opacity: 0.7 })));
+
+    if (s.env) { // environment stations get a coloured cap
+      const cap = new THREE.Mesh(capGeo, new THREE.MeshStandardMaterial({ color: s.env, roughness: 0.45 }));
+      cap.position.y = H + 0.04;
+      cap.castShadow = true;
+      g.add(cap);
+    }
+    const lampMat = new THREE.MeshBasicMaterial({ color: COLOR.lampOff });
+    const lamp = new THREE.Mesh(lampGeo, lampMat);
+    lamp.position.set(0, H + (s.env ? 0.11 : 0.03), D / 2 - 0.22);
+    g.add(lamp);
+    scene.add(g);
+
+    const label = document.createElement('div');
+    label.className = 'plabel' + (s.env ? ' plabel--env' : '');
+    if (s.env) label.style.setProperty('--env', '#' + s.env.toString(16).padStart(6, '0'));
+    label.innerHTML = `<b>${s.name}</b><span>${s.tools}</span>`;
+    labelsEl.appendChild(label);
+    return { g, mat, lampMat, label, a, heat: 0, anchor: onRing(a, R + 1.55, 0) };
+  });
+
+  // Centre and feedback labels
+  const hubLabel = document.createElement('div');
+  hubLabel.className = 'plabel plabel--hub';
+  hubLabel.innerHTML = '<b>Agile loop</b><span>Feedback shapes<br>the next commit</span>';
+  labelsEl.appendChild(hubLabel);
+  const fbLabel = document.createElement('div');
+  fbLabel.className = 'plabel plabel--feedback';
+  fbLabel.innerHTML = '<span>feedback</span>';
+  labelsEl.appendChild(fbLabel);
+  const hubAnchor = new THREE.Vector3(0, 0.2, 0);
+  const fbAnchor = onRing(angleOf(STATIONS.length - 1) + STEP / 2, R + 0.9, 0);
+
+  /* ---------- Changes (packets) ---------- */
+  const packetGeo = new THREE.BoxGeometry(0.34, 0.34, 0.34);
+  const packets = [], pool = [];
+  const LAP = 10;                                  // seconds per loop
+  const OMEGA = (Math.PI * 2) / LAP;
+
+  function makePacket(fail) {
+    const m = pool.pop() || new THREE.Mesh(packetGeo, new THREE.MeshStandardMaterial({ roughness: 0.4 }));
+    m.material.color.setHex(COLOR.packet);
+    m.castShadow = true;
+    m.scale.setScalar(1);
+    m.visible = true;
+    scene.add(m);
+    return { m, a: angleOf(0), state: 'loop', fail, t: 0 };
   }
-  function initPipeline() {
-    const stageEl = document.getElementById('pipelineStage');
-    const canvas = document.getElementById('pipelineCanvas');
-    const labelsEl = document.getElementById('pipelineLabels');
+  function setPacketColor(p, hex) { p.m.material.color.setHex(hex); }
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, preserveDrawingBuffer: reduceMotion });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    const scene = new THREE.Scene();
-    scene.fog = new THREE.Fog(COLOR.navyDeep, 18, 42);
-    const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  const bezier = (p0, p1, p2, t) => p0.clone().multiplyScalar((1 - t) * (1 - t))
+    .add(p1.clone().multiplyScalar(2 * (1 - t) * t)).add(p2.clone().multiplyScalar(t * t));
 
-    scene.add(new THREE.HemisphereLight(0xbfd2ff, COLOR.navyDeep, 0.65));
-    const key = new THREE.DirectionalLight(0xffffff, 0.75);
-    key.position.set(-6, 12, 8);
-    scene.add(key);
+  function updatePacket(p, dt) {
+    if (p.state === 'loop') {
+      p.a += OMEGA * dt;
+      p.m.position.copy(onRing(p.a, R, PACKET_Y));
+      p.m.rotation.y -= dt * 1.4;
+      if (p.fail && p.a >= angleOf(TESTING)) {      // fails testing → back to build
+        p.state = 'rollback'; p.t = 0;
+        p.from = p.m.position.clone();
+        p.to = onRing(angleOf(BUILD), R, PACKET_Y);
+        p.ctrl = new THREE.Vector3(0, 3.4, 0);
+        setPacketColor(p, COLOR.red);
+      }
+      if (p.a >= angleOf(0) + Math.PI * 2) { p.state = 'done'; }
+    } else if (p.state === 'rollback') {
+      p.t += dt / 2.0;
+      const k = easeOut(clamp01(p.t));
+      p.m.position.copy(bezier(p.from, p.ctrl, p.to, k));
+      p.m.rotation.x += dt * 3;
+      if (p.t >= 1) { p.state = 'loop'; p.fail = false; p.a = angleOf(BUILD); setPacketColor(p, COLOR.packet); }
+    } else if (p.state === 'done') {                // absorbed into the next commit
+      const s = p.m.scale.x - dt * 2.5;
+      p.m.scale.setScalar(Math.max(s, 0.001));
+      if (s <= 0) { p.state = 'dead'; p.m.visible = false; scene.remove(p.m); pool.push(p.m); }
+    }
+  }
 
-    const floor = new THREE.GridHelper(60, 40, 0x2a4370, 0x1a2c4d);
-    floor.position.y = -0.001;
-    scene.add(floor);
-
-    // Stages
-    const SPACING = 3.4, W = 2.2, H = 0.55, D = 2.2;
-    const xs = STAGES.map((_, i) => (i - (STAGES.length - 1) / 2) * SPACING);
-    const blockGeo = new THREE.BoxGeometry(W, H, D);
-    blockGeo.translate(0, H / 2, 0);
-    const edgeGeo = new THREE.EdgesGeometry(blockGeo);
-    const lampGeo = new THREE.BoxGeometry(W * 0.8, 0.05, 0.16);
-
-    const stages = STAGES.map((s, i) => {
-      const mat = new THREE.MeshStandardMaterial({ color: COLOR.block, roughness: 0.6, metalness: 0.2, emissive: COLOR.amber, emissiveIntensity: 0 });
-      const mesh = new THREE.Mesh(blockGeo, mat);
-      mesh.position.x = xs[i];
-      const edges = new THREE.LineSegments(edgeGeo, new THREE.LineBasicMaterial({ color: COLOR.steel, transparent: true, opacity: 0.55 }));
-      mesh.add(edges);
-      const lampMat = new THREE.MeshBasicMaterial({ color: COLOR.steel });
-      const lamp = new THREE.Mesh(lampGeo, lampMat);
-      lamp.position.set(0, H + 0.03, D / 2 - 0.25);
-      mesh.add(lamp);
-      scene.add(mesh);
-
-      const label = document.createElement('div');
-      label.className = 'plabel';
-      label.innerHTML = `<b>${s.name}</b><span>${s.tools}</span>`;
-      labelsEl.appendChild(label);
-      return { mesh, mat, lampMat, edges, label, heat: 0, anchor: new THREE.Vector3(xs[i], 0, D / 2 + 0.6) };
+  function heatStations(dt) {
+    stations.forEach((s, i) => {
+      let near = 0;
+      packets.forEach(p => {
+        if (p.state !== 'loop') return;
+        // angular distance on the unwrapped loop
+        let d = Math.abs(((p.a - s.a) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI);
+        if (d < 0.28) near = Math.max(near, 1 - d / 0.28);
+      });
+      s.heat += (near - s.heat) * Math.min(1, dt * 8);
+      s.mat.emissiveIntensity = s.heat * 0.28;
+      s.lampMat.color.setHex(s.heat > 0.3 ? COLOR.amber : COLOR.lampOff);
+      s.label.classList.toggle('is-on', s.heat > 0.4);
     });
-
-    // Track between stages
-    const trackLen = xs[xs.length - 1] - xs[0];
-    const track = new THREE.Mesh(
-      new THREE.BoxGeometry(trackLen, 0.06, 0.22),
-      new THREE.MeshStandardMaterial({ color: 0x2a4370, roughness: 0.8 })
-    );
-    track.position.set(0, H + 0.03, 0);
-    scene.add(track);
-
-    // Packets (changes moving through the pipeline)
-    const PACKET_Y = H + 0.22;
-    const packetGeo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
-    const packets = [];
-    const pool = [];
-    function makePacket(fail) {
-      const m = pool.pop() || new THREE.Mesh(packetGeo,
-        new THREE.MeshStandardMaterial({ color: COLOR.white, emissive: COLOR.white, emissiveIntensity: 0.35, roughness: 0.4 }));
-      m.material.color.setHex(COLOR.white);
-      m.material.emissive.setHex(COLOR.white);
-      m.scale.setScalar(1);
-      m.visible = true;
-      scene.add(m);
-      return { m, x: xs[0] - 1.2, state: 'forward', fail, t: 0, life: 0 };
-    }
-    let spawned = 0;
-
-    const SPEED = 2.4; // units per second
-    function updatePacket(p, dt) {
-      p.life += dt;
-      if (p.state === 'forward') {
-        p.x += SPEED * dt;
-        p.m.position.set(p.x, PACKET_Y, 0);
-        p.m.rotation.y += dt * 1.5;
-        if (p.fail && p.x >= xs[4]) { // fails monitoring at Observe
-          p.state = 'rollback'; p.t = 0; p.from = p.x;
-          p.m.material.color.setHex(COLOR.red);
-          p.m.material.emissive.setHex(COLOR.red);
-        }
-        if (p.x > xs[4] + 1.6) p.state = 'done';
-      } else if (p.state === 'rollback') {
-        // arc back to Build over the pipeline
-        p.t += dt / 1.8;
-        const k = easeOut(clamp01(p.t));
-        p.x = p.from + (xs[1] - p.from) * k;
-        p.m.position.set(p.x, PACKET_Y + Math.sin(Math.PI * clamp01(p.t)) * 1.8, -Math.sin(Math.PI * clamp01(p.t)) * 0.8);
-        if (p.t >= 1) {
-          p.state = 'forward'; p.fail = false;
-          p.m.material.color.setHex(COLOR.white);
-          p.m.material.emissive.setHex(COLOR.white);
-        }
-      } else if (p.state === 'done') {
-        p.x += SPEED * dt;
-        p.m.position.x = p.x;
-        const s = p.m.scale.x - dt * 2;
-        p.m.scale.setScalar(Math.max(s, 0.001));
-        if (s <= 0) { p.state = 'dead'; p.m.visible = false; scene.remove(p.m); pool.push(p.m); }
-      }
-    }
-
-    // Layout
-    let dist = 18, narrowView = false;
-    function resize() {
-      const w = stageEl.clientWidth, h = stageEl.clientHeight;
-      renderer.setSize(w, h, false);
-      camera.aspect = w / h;
-      // fit all stages horizontally
-      const halfWidth = trackLen / 2 + W;
-      const hfov = 2 * Math.atan(Math.tan((camera.fov * Math.PI / 180) / 2) * camera.aspect);
-      narrowView = camera.aspect < 1.9;
-      dist = Math.max(9, (halfWidth / Math.tan(hfov / 2)) * (narrowView ? 1.02 : 1.0));
-      camera.updateProjectionMatrix();
-      if (!running) renderOnce();
-    }
-
-    const pointer = { x: 0, cur: 0 };
-    window.addEventListener('pointermove', e => { pointer.x = (e.clientX / window.innerWidth) * 2 - 1; }, { passive: true });
-
-    function placeCamera() {
-      pointer.cur += (pointer.x - pointer.cur) * 0.05;
-      // Narrow screens look straight on so the five labels don't crowd together
-      const yaw = (narrowView ? -0.06 : -0.32) + pointer.cur * 0.12;
-      const lift = narrowView ? 0.7 : 0.55;
-      camera.position.set(Math.sin(yaw) * dist, dist * lift, Math.cos(yaw) * dist);
-      camera.lookAt(0, narrowView ? 0.6 : 0.9, 0);
-    }
-
-    const v = new THREE.Vector3();
-    function placeLabels() {
-      const w = stageEl.clientWidth, h = stageEl.clientHeight;
-      const narrow = w < 560;
-      stages.forEach(s => {
-        v.copy(s.anchor).project(camera);
-        const x = (v.x + 1) / 2 * w, y = (1 - v.y) / 2 * h;
-        s.label.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, 0)`;
-        s.label.querySelector('span').style.display = narrow ? 'none' : '';
-        s.label.classList.toggle('is-on', s.heat > 0.4);
-      });
-    }
-
-    // Power-up sequence: stages rise one by one, then packets start
-    let startTime = null, running = false, raf = null, last = 0, nextSpawn = 0, lastElapsed = 0;
-    const RISE = 0.5, STAGGER = 0.18;
-
-    function applyRise(elapsed) {
-      stages.forEach((s, i) => {
-        const k = reduceMotion ? 1 : easeOut(clamp01((elapsed - i * STAGGER) / RISE));
-        s.mesh.scale.y = Math.max(k, 0.001);
-        s.mesh.visible = k > 0.002;
-        s.label.style.opacity = k;
-      });
-      const tk = reduceMotion ? 1 : easeOut(clamp01((elapsed - 0.2) / 1.0));
-      track.scale.x = Math.max(tk, 0.001);
-    }
-
-    function heatStages(dt) {
-      stages.forEach((s, i) => {
-        let near = 0;
-        packets.forEach(p => {
-          if (p.state !== 'forward') return;
-          const d = Math.abs(p.m.position.x - xs[i]);
-          if (d < 0.9) near = Math.max(near, 1 - d / 0.9);
-        });
-        s.heat += (near - s.heat) * Math.min(1, dt * 8);
-        s.mat.emissiveIntensity = s.heat * 0.35;
-        s.lampMat.color.setHex(s.heat > 0.3 ? COLOR.amber : COLOR.steel);
-      });
-      // Observe flashes red while a change is rolling back
-      const rolling = packets.some(p => p.state === 'rollback' && p.t < 0.35);
-      if (rolling) { stages[4].lampMat.color.setHex(COLOR.red); stages[4].mat.emissive.setHex(COLOR.red); stages[4].mat.emissiveIntensity = 0.3; }
-      else stages[4].mat.emissive.setHex(COLOR.amber);
-    }
-
-    function frame(now) {
-      raf = null;
-      if (startTime === null) { startTime = now; last = now; }
-      const elapsed = (now - startTime) / 1000;
-      lastElapsed = elapsed;
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
-
-      applyRise(elapsed);
-      const live = elapsed > STAGES.length * STAGGER + RISE;
-      if (live) {
-        nextSpawn -= dt;
-        if (nextSpawn <= 0) {
-          spawned++;
-          packets.push(makePacket(spawned % 5 === 3));
-          nextSpawn = 1.35;
-        }
-      }
-      packets.forEach(p => updatePacket(p, dt));
-      for (let i = packets.length - 1; i >= 0; i--) if (packets[i].state === 'dead') packets.splice(i, 1);
-      heatStages(dt);
-
-      placeCamera();
-      renderer.render(scene, camera);
-      placeLabels();
-      if (running) raf = requestAnimationFrame(frame);
-    }
-
-    function renderOnce() {
-      applyRise(reduceMotion ? 99 : lastElapsed);
-      placeCamera();
-      renderer.render(scene, camera);
-      placeLabels();
-    }
-
-    window.addEventListener('resize', resize);
-    resize();
-
-    if (reduceMotion) {
-      // Static scene: a few changes in flight, one rolling back
-      [xs[0] + 0.6, xs[2], xs[3] + 0.8].forEach(x => {
-        const p = makePacket(false); p.m.position.set(x, PACKET_Y, 0); packets.push(p);
-      });
-      const r = makePacket(false);
-      r.m.material.color.setHex(COLOR.red); r.m.material.emissive.setHex(COLOR.red);
-      r.m.position.set((xs[1] + xs[4]) / 2, PACKET_Y + 1.6, -0.8);
-      stages.forEach((s, i) => { s.heat = i === 2 ? 1 : 0; s.mat.emissiveIntensity = s.heat * 0.35; s.lampMat.color.setHex(s.heat ? COLOR.amber : COLOR.steel); });
-      renderOnce();
-      return;
-    }
-
-    // Power up when the section scrolls into view; pause while off screen
-    whenVisible(stageEl,
-      () => { if (running) return; running = true; last = performance.now(); raf = requestAnimationFrame(frame); },
-      () => { running = false; if (raf) cancelAnimationFrame(raf); raf = null; });
+    const failing = packets.some(p => p.state === 'rollback' && p.t < 0.35);
+    const test = stations[TESTING];
+    if (failing) { test.lampMat.color.setHex(COLOR.red); test.label.classList.add('is-fail'); }
+    else test.label.classList.remove('is-fail');
   }
 
-  if (document.getElementById('pipelineStage')) initPipeline();
+  /* ---------- Camera and layout ---------- */
+  let dist = 18, narrow = false;
+  const PITCH = 0.72;
+  function resize() {
+    const w = stageEl.clientWidth, h = stageEl.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    narrow = w < 560;
+    const vHalf = Math.tan((camera.fov * Math.PI / 180) / 2);
+    const hHalf = vHalf * camera.aspect;
+    const halfW = R + (narrow ? 1.5 : 2.4);
+    const halfH = (R + 2.2) * Math.sin(PITCH) + 1.9;
+    dist = Math.max(halfW / hHalf, halfH / vHalf) * 1.04;
+    if (!running) renderOnce();
+  }
+
+  const pointer = { x: 0, cur: 0 };
+  window.addEventListener('pointermove', e => { pointer.x = (e.clientX / window.innerWidth) * 2 - 1; }, { passive: true });
+  function placeCamera() {
+    pointer.cur += (pointer.x - pointer.cur) * 0.05;
+    const yaw = pointer.cur * 0.14;
+    camera.position.set(Math.sin(yaw) * Math.cos(PITCH) * dist, Math.sin(PITCH) * dist, Math.cos(yaw) * Math.cos(PITCH) * dist);
+    camera.lookAt(0, 0, 0.9);
+  }
+
+  const v = new THREE.Vector3();
+  function toScreen(p) {
+    v.copy(p).project(camera);
+    return { x: (v.x + 1) / 2 * stageEl.clientWidth, y: (1 - v.y) / 2 * stageEl.clientHeight };
+  }
+  const put = (el, x, y) => { el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) translate(-50%, -50%)`; };
+  const stationTop = new THREE.Vector3();
+  function placeLabels() {
+    const c = toScreen(hubAnchor);
+    const ox = narrow ? 52 : 118, oy = narrow ? 30 : 58;   // labels are wider than tall
+    stations.forEach(s => {
+      stationTop.set(s.g.position.x, H, s.g.position.z);
+      const p = toScreen(stationTop);
+      const dx = p.x - c.x, dy = p.y - c.y, len = Math.hypot(dx, dy) || 1;
+      put(s.label, p.x + dx / len * ox, p.y + dy / len * oy);
+      s.label.classList.toggle('is-compact', narrow);
+    });
+    put(hubLabel, c.x, c.y);
+    const f = toScreen(fbAnchor); put(fbLabel, f.x, f.y);
+    hubLabel.classList.toggle('is-compact', narrow);
+  }
+
+  /* ---------- Power-up, loop ---------- */
+  let running = false, raf = null, startTime = null, last = 0, elapsedNow = 0, nextSpawn = 0, spawned = 0;
+  const RISE = 0.45, STAGGER = 0.14;
+
+  function applyRise(elapsed) {
+    stations.forEach((s, i) => {
+      const k = reduceMotion ? 1 : easeOut(clamp01((elapsed - i * STAGGER) / RISE));
+      s.g.scale.y = Math.max(k, 0.001);
+      s.g.visible = k > 0.002;
+      s.label.style.opacity = k;
+    });
+    const t = reduceMotion ? 1 : clamp01((elapsed - 0.3) / 0.9);
+    trackMat.opacity = t;
+    feedback.material.opacity = t * 0.95;
+    hubLabel.style.opacity = t; fbLabel.style.opacity = t;
+    const hk = reduceMotion ? 1 : easeOut(clamp01(elapsed / 0.8));
+    hub.scale.set(hk || 0.001, 1, hk || 0.001);
+    hubRing.scale.set(hk || 0.001, hk || 0.001, 1);
+  }
+
+  function frame(now) {
+    raf = null;
+    if (startTime === null) { startTime = now; last = now; }
+    elapsedNow = (now - startTime) / 1000;
+    const dt = Math.min((now - last) / 1000, 0.05);
+    last = now;
+
+    applyRise(elapsedNow);
+    if (elapsedNow > STATIONS.length * STAGGER + RISE) {
+      nextSpawn -= dt;
+      if (nextSpawn <= 0) {
+        spawned++;
+        packets.push(makePacket(spawned % 5 === 2));
+        nextSpawn = 1.25;
+      }
+    }
+    packets.forEach(p => updatePacket(p, dt));
+    for (let i = packets.length - 1; i >= 0; i--) if (packets[i].state === 'dead') packets.splice(i, 1);
+    heatStations(dt);
+
+    placeCamera();
+    renderer.render(scene, camera);
+    placeLabels();
+    if (running) raf = requestAnimationFrame(frame);
+  }
+
+  function renderOnce() {
+    applyRise(reduceMotion ? 99 : elapsedNow);
+    placeCamera();
+    renderer.render(scene, camera);
+    placeLabels();
+  }
+
+  window.addEventListener('resize', resize);
+  resize();
+
+  if (reduceMotion) {
+    // Still scene: changes spread around the loop, one rolling back from Testing
+    [0.4, 1.6, 2.6, 3.6, 5.2].forEach(off => {
+      const p = makePacket(false); p.a = angleOf(0) + off; p.m.position.copy(onRing(p.a, R, PACKET_Y)); packets.push(p);
+    });
+    const r = makePacket(false);
+    setPacketColor(r, COLOR.red);
+    r.m.position.copy(bezier(onRing(angleOf(TESTING), R, PACKET_Y), new THREE.Vector3(0, 3.4, 0), onRing(angleOf(BUILD), R, PACKET_Y), 0.45));
+    stations[3].heat = 1; stations[3].lampMat.color.setHex(COLOR.amber); stations[3].mat.emissiveIntensity = 0.28;
+    stations[3].label.classList.add('is-on');
+    renderOnce();
+    return;
+  }
+
+  // Power up when the section scrolls into view; pause while off screen
+  new IntersectionObserver(([e]) => {
+    if (e.isIntersecting) {
+      if (running) return;
+      running = true; last = performance.now();
+      raf = requestAnimationFrame(frame);
+    } else {
+      running = false;
+      if (raf) cancelAnimationFrame(raf);
+      raf = null;
+    }
+  }).observe(stageEl);
 })();
