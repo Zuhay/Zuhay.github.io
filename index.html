@@ -79,9 +79,10 @@
         <h2>How I ship</h2>
       </header>
       <p class="section__lede">
-        The delivery loop I supported. Each change is built, provisioned and promoted through
-        development, testing and production, and what we observe in production feeds the next
-        iteration. When a change fails testing, it goes back to build.
+        Each change moves from planning through build, security and API
+        checks, and provisioning, then is promoted outward through development, testing and
+        production. What we observe in production feeds the next plan. When a change fails
+        testing, it goes back to build.
       </p>
       <figure class="pipeline">
         <div class="pipeline__stage" id="pipelineStage">
@@ -89,9 +90,11 @@
           <div class="pipeline__labels" id="pipelineLabels" aria-hidden="true"></div>
         </div>
         <figcaption class="sr-only">
-          A loop of seven stages: Commit (Git, GitHub), Build (Jenkins, GitHub Actions), Provision
-          (Terraform, Ansible), then the Development, Testing and Production environments (Harness,
-          Kubernetes, Rancher), then Observe (Splunk, Grafana, CloudWatch), with feedback returning to Commit.
+          Software delivery loop with eight stages: Plan (Agile/Scrum), Commit (Git, GitHub), Build
+          (Jenkins, GitHub Actions), Security (certificate validation), APIs (REST APIs, integrations),
+          Provision (Terraform, Ansible), Deploy (Harness, Kubernetes) and Observe (Splunk, Grafana,
+          CloudWatch). Deployed changes are promoted outward through three environment rings:
+          Development, Testing and Production. Feedback from Observe returns to Plan.
         </figcaption>
       </figure>
     </section>

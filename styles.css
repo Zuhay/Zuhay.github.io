@@ -409,8 +409,14 @@ h1, h2, h3 { line-height: 1.1; margin: 0; letter-spacing: -0.02em; }
 .plabel--env b::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--env); }
 .plabel.is-on b { color: #b45309; }
 .plabel.is-fail b { color: #dc2626; }
-.plabel--hub b { font-size: 1.05rem; color: var(--accent); }
-.plabel--hub span { color: var(--text-2); }
+.plabel--hub b { font-size: 0.98rem; color: var(--accent); white-space: normal; max-width: 9ch; line-height: 1.1; justify-content: center; text-align: center; }
+.plabel--ring b {
+  font-family: var(--font); font-stretch: 100%; font-weight: 600; font-size: 0.72rem;
+  padding: 2px 9px; border-radius: 999px; color: #fff; background: var(--env);
+  box-shadow: 0 4px 10px -6px var(--env); transition: transform .2s, box-shadow .2s;
+}
+.plabel--ring.is-on b { color: #fff; transform: scale(1.1); box-shadow: 0 6px 16px -6px var(--env); }
+.plabel--ring.is-fail b { background: #dc2626; }
 .plabel--feedback span { font-family: var(--mono); font-size: 0.72rem; color: #b45309; letter-spacing: .04em; }
 .plabel.is-compact span { display: none; }
 .plabel--hub.is-compact span { display: none; }
@@ -442,4 +448,6 @@ h1, h2, h3 { line-height: 1.1; margin: 0; letter-spacing: -0.02em; }
   .sphere .tag { font-size: 12px; }
   .skill-panel { min-height: 0; padding: 24px; }
   .plabel b { font-size: 0.68rem; }
+  .plabel--ring b { font-size: 0.56rem; padding: 1px 7px; }
+  .plabel--hub b { font-size: 0.72rem; }
 }
